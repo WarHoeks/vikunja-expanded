@@ -17,12 +17,9 @@
 package models
 
 import (
-	"io"
 	"strings"
 	"time"
 
-	"code.vikunja.io/api/pkg/db"
-	"code.vikunja.io/api/pkg/files"
 	"code.vikunja.io/api/pkg/user"
 	"code.vikunja.io/api/pkg/web"
 
@@ -40,10 +37,6 @@ type TaskLink struct {
 	URL string `xorm:"varchar(2000) not null" json:"url" valid:"required,url,runelength(1|2000)" minLength:"1" maxLength:"2000" doc:"The target URL, e.g. a repository, environment, or docs page."`
 	// The display text for this link.
 	Title string `xorm:"varchar(250) not null" json:"title" valid:"required,runelength(1|250)" minLength:"1" maxLength:"250" doc:"The display text for this link."`
-	// A simple-icons (https://simple-icons.org) slug, e.g. "github". Empty when custom_icon_id is set instead.
-	Icon string `xorm:"varchar(100) null" json:"icon" maxLength:"100" doc:"A simple-icons (https://simple-icons.org) slug, e.g. \"github\". Empty when custom_icon_id is set instead."`
-	// The id of an uploaded custom icon file. 0 when icon (a simple-icons slug) is set instead.
-	CustomIconID int64 `xorm:"bigint null" json:"custom_icon_id" readOnly:"true" doc:"The id of an uploaded custom icon file, set via the icon upload endpoint. 0 when icon (a simple-icons slug) is set instead."`
 
 	CreatedByID int64 `xorm:"bigint not null" json:"-"`
 	// The user who added this link.
@@ -64,9 +57,6 @@ func (*TaskLink) TableName() string {
 }
 
 func (tl *TaskLink) validate() error {
-	if tl.Icon != "" && tl.CustomIconID != 0 {
-		return InvalidFieldErrorWithMessage([]string{"icon", "custom_icon_id"}, "a link can use a simple-icons slug or a custom icon, not both")
-	}
 	if !strings.HasPrefix(tl.URL, "http://") && !strings.HasPrefix(tl.URL, "https://") {
 		return InvalidFieldErrorWithMessage([]string{"url"}, "url must start with http:// or https://")
 	}
@@ -143,7 +133,7 @@ func (tl *TaskLink) Update(s *xorm.Session, a web.Auth) (err error) {
 
 	_, err = s.
 		Where("id = ? AND task_id = ?", tl.ID, tl.TaskID).
-		Cols("url", "title", "icon", "custom_icon_id").
+		Cols("url", "title").
 		Update(tl)
 	if err != nil {
 		return err
@@ -163,115 +153,4 @@ func (tl *TaskLink) Delete(s *xorm.Session, _ web.Auth) (err error) {
 		Where("id = ? AND task_id = ?", tl.ID, tl.TaskID).
 		Delete(&TaskLink{})
 	return err
-}
-
-// loadExisting fetches the current row for tl.ID/tl.TaskID into tl, without the
-// auto-condition xorm would otherwise add from tl's already-set fields.
-func (tl *TaskLink) loadExisting(s *xorm.Session) error {
-	exists, err := s.Where("id = ? AND task_id = ?", tl.ID, tl.TaskID).NoAutoCondition().Get(tl)
-	if err != nil {
-		return err
-	}
-	if !exists {
-		return ErrTaskLinkDoesNotExist{ID: tl.ID, TaskID: tl.TaskID}
-	}
-	return nil
-}
-
-// SetCustomIcon uploads f as this link's custom icon, replacing any simple-icons
-// slug or previously uploaded custom icon. The caller owns the session and commit.
-func (tl *TaskLink) SetCustomIcon(s *xorm.Session, f io.ReadSeeker, realname string, realsize uint64, a web.Auth) error {
-	if err := tl.loadExisting(s); err != nil {
-		return err
-	}
-	oldCustomIconID := tl.CustomIconID
-
-	file, err := files.CreateWithSession(s, f, realname, realsize, a)
-	if err != nil {
-		if files.IsErrFileIsTooLarge(err) {
-			return ErrTaskLinkIconIsTooLarge{Size: realsize}
-		}
-		return err
-	}
-
-	tl.CustomIconID = file.ID
-	tl.Icon = ""
-	if _, err := s.ID(tl.ID).Cols("custom_icon_id", "icon").Update(tl); err != nil {
-		_ = file.Delete(s)
-		return err
-	}
-
-	if err := deleteCustomIconFileIfUnused(s, oldCustomIconID); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// SetCustomIconFromLibrary attaches an existing custom icon library entry to this
-// link by copying its file reference — no new upload, and the file may end up
-// shared by several links. The caller owns the session and commit.
-func (tl *TaskLink) SetCustomIconFromLibrary(s *xorm.Session, customIconID int64, a web.Auth) error {
-	if err := tl.loadExisting(s); err != nil {
-		return err
-	}
-	oldCustomIconID := tl.CustomIconID
-
-	fileID, err := GetCustomIconFileID(s, a, customIconID)
-	if err != nil {
-		return err
-	}
-
-	tl.CustomIconID = fileID
-	tl.Icon = ""
-	if _, err := s.ID(tl.ID).Cols("custom_icon_id", "icon").Update(tl); err != nil {
-		return err
-	}
-
-	return deleteCustomIconFileIfUnused(s, oldCustomIconID)
-}
-
-// GetTaskLinkIconFile loads the file for a link's custom icon, checking read
-// access to the parent task first. Owns its own session, committed before the
-// storage read so no pool connection is held while streaming.
-func GetTaskLinkIconFile(a web.Auth, taskID, linkID int64) (f *files.File, err error) {
-	s := db.NewSession()
-	defer s.Close()
-
-	tl := &TaskLink{ID: linkID, TaskID: taskID}
-	can, _, err := tl.CanRead(s, a)
-	if err != nil {
-		_ = s.Rollback()
-		return nil, err
-	}
-	if !can {
-		_ = s.Rollback()
-		return nil, ErrGenericForbidden{}
-	}
-
-	if err := tl.loadExisting(s); err != nil {
-		_ = s.Rollback()
-		return nil, err
-	}
-	if tl.CustomIconID == 0 {
-		_ = s.Rollback()
-		return nil, ErrTaskLinkHasNoCustomIcon{ID: tl.ID}
-	}
-
-	f = &files.File{ID: tl.CustomIconID}
-	if err := f.LoadFileMetaByID(s); err != nil {
-		_ = s.Rollback()
-		return nil, err
-	}
-
-	if err := s.Commit(); err != nil {
-		_ = s.Rollback()
-		return nil, err
-	}
-
-	if err := f.LoadFileByID(); err != nil {
-		return nil, err
-	}
-
-	return f, nil
 }

@@ -69,43 +69,4 @@ export default class TaskLinkService {
 		}
 	}
 
-	async attachCustomIconFromLibrary(link: ITaskLink, customIconId: number): Promise<TaskLinkModel> {
-		const cancel = this.setLoading()
-		try {
-			const {data} = await AuthenticatedHTTPFactory().post(
-				apiV2Url(`tasks/${Number(link.taskId)}/links/${Number(link.id)}/icon/library/${Number(customIconId)}`),
-			)
-			return new TaskLinkModel(data)
-		} finally {
-			cancel()
-		}
-	}
-
-	async uploadCustomIcon(link: ITaskLink, file: File): Promise<TaskLinkModel> {
-		const cancel = this.setLoading()
-		try {
-			const data = new FormData()
-			data.append('icon', file, file.name)
-			const {data: response} = await AuthenticatedHTTPFactory().post(
-				apiV2Url(`tasks/${Number(link.taskId)}/links/${Number(link.id)}/icon`),
-				data,
-			)
-			return new TaskLinkModel(response)
-		} finally {
-			cancel()
-		}
-	}
-
-	/**
-	 * Fetches a link's custom icon as an object URL. The download route requires auth,
-	 * so a plain <img src> can't be used — mirrors AbstractService.getBlobUrl.
-	 */
-	async getCustomIconBlobUrl(link: ITaskLink): Promise<string> {
-		const response = await AuthenticatedHTTPFactory()({
-			url: apiV2Url(`tasks/${Number(link.taskId)}/links/${Number(link.id)}/icon`),
-			method: 'GET',
-			responseType: 'blob',
-		})
-		return window.URL.createObjectURL(response.data)
-	}
 }

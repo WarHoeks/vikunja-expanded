@@ -6,8 +6,6 @@ export interface ITaskLink extends IAbstract {
 	taskId: number
 	url: string
 	title: string
-	icon: string
-	customIconId: number
 	createdBy: IUser
 	created: Date
 	updated: Date

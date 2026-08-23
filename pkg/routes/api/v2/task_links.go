@@ -21,14 +21,10 @@ import (
 	"fmt"
 	"net/http"
 
-	"code.vikunja.io/api/pkg/config"
-	"code.vikunja.io/api/pkg/db"
 	"code.vikunja.io/api/pkg/models"
-	webfiles "code.vikunja.io/api/pkg/web/files"
 	"code.vikunja.io/api/pkg/web/handler"
 
 	"github.com/danielgtaylor/huma/v2"
-	"github.com/danielgtaylor/huma/v2/adapters/humaecho"
 )
 
 // models.TaskLink.ReadAll returns []*models.TaskLink, so that's the element type.
@@ -37,7 +33,8 @@ type taskLinkListBody struct {
 }
 
 // RegisterTaskLinkRoutes wires the nested task-links CRUD onto the Huma API.
-// Mirrors project_links.go's shape (no ReadOne, so update is PUT only).
+// Mirrors project_links.go's shape (no ReadOne, so update is PUT only). Unlike
+// project links, task links have no icon — just a URL and a title.
 func RegisterTaskLinkRoutes(api huma.API) {
 	tags := []string{"task"}
 
@@ -53,7 +50,7 @@ func RegisterTaskLinkRoutes(api huma.API) {
 	Register(api, huma.Operation{
 		OperationID: "task-links-create",
 		Summary:     "Add a link to a task",
-		Description: "Creates a reference link on the given task. The parent task is taken from the URL, not the body. Requires write access to the task. Set icon to a simple-icons (https://simple-icons.org) slug; leave it empty if you intend to attach a custom icon via the icon upload endpoint instead.",
+		Description: "Creates a reference link on the given task. The parent task is taken from the URL, not the body. Requires write access to the task.",
 		Method:      http.MethodPost,
 		Path:        "/tasks/{task}/links",
 		Tags:        tags,
@@ -62,7 +59,7 @@ func RegisterTaskLinkRoutes(api huma.API) {
 	Register(api, huma.Operation{
 		OperationID: "task-links-update",
 		Summary:     "Update a task link",
-		Description: "Replaces a link's url, title and icon. The link must belong to the task in the path, and write access to that task is required.",
+		Description: "Replaces a link's url and title. The link must belong to the task in the path, and write access to that task is required.",
 		Method:      http.MethodPut,
 		Path:        "/tasks/{task}/links/{link}",
 		Tags:        tags,
@@ -76,46 +73,6 @@ func RegisterTaskLinkRoutes(api huma.API) {
 		Path:        "/tasks/{task}/links/{link}",
 		Tags:        tags,
 	}, taskLinksDelete)
-
-	Register(api, huma.Operation{
-		OperationID: "task-links-icon-upload",
-		Summary:     "Upload a custom icon for a task link",
-		Description: "Uploads an image as the link's icon, replacing any simple-icons slug or previously uploaded custom icon. Requires write access to the task. The max size is the server's configured file size limit.",
-		Method:      http.MethodPost,
-		Path:        "/tasks/{task}/links/{link}/icon",
-		Tags:        tags,
-		// +2 MB mirrors Echo's global BodyLimit overhead, same as task-attachments-upload.
-		// #nosec G115 - configured value won't exceed int64 max in practice.
-		MaxBodyBytes: (int64(config.GetMaxFileSizeInMBytes()) + 2) * 1024 * 1024,
-	}, taskLinksIconUpload)
-
-	Register(api, huma.Operation{
-		OperationID: "task-links-icon-download",
-		Summary:     "Download a task link's custom icon",
-		Description: "Returns the raw bytes of a link's uploaded custom icon. Requires read access to the task. 404s if the link has no custom icon (e.g. it uses a simple-icons slug instead).",
-		Method:      http.MethodGet,
-		Path:        "/tasks/{task}/links/{link}/icon",
-		Tags:        tags,
-		Responses: map[string]*huma.Response{
-			"200": {
-				Description: "The icon file bytes. The Content-Type header carries the file's mime type.",
-				Content: map[string]*huma.MediaType{
-					"application/octet-stream": {
-						Schema: &huma.Schema{Type: huma.TypeString, Format: "binary"},
-					},
-				},
-			},
-		},
-	}, taskLinksIconDownload)
-
-	Register(api, huma.Operation{
-		OperationID: "task-links-icon-from-library",
-		Summary:     "Attach a custom icon library entry to a task link",
-		Description: "Sets the link's icon to an existing entry from the shared custom icon library (see /custom-icons), without uploading a new image. Requires write access to the task.",
-		Method:      http.MethodPost,
-		Path:        "/tasks/{task}/links/{link}/icon/library/{customicon}",
-		Tags:        tags,
-	}, taskLinksIconFromLibrary)
 }
 
 func init() { AddRouteRegistrar(RegisterTaskLinkRoutes) }
@@ -183,110 +140,4 @@ func taskLinksDelete(ctx context.Context, in *struct {
 		return nil, translateDomainError(err)
 	}
 	return &emptyBody{}, nil
-}
-
-type taskLinkIconUploadInput struct {
-	TaskID  int64 `path:"task" doc:"The id of the task the link belongs to."`
-	LinkID  int64 `path:"link" doc:"The id of the link to set the icon on."`
-	RawBody huma.MultipartFormFiles[struct {
-		File huma.FormFile `form:"icon" required:"true" doc:"The image to use as the link's icon."`
-	}]
-}
-
-// taskLinksIconUpload is a custom (non-CRUDable) action, so permission
-// enforcement and session management are the handler's responsibility here —
-// there is no handler.Do* for a multipart upload (see the api-v2-routes skill).
-func taskLinksIconUpload(ctx context.Context, in *taskLinkIconUploadInput) (*singleBody[models.TaskLink], error) {
-	a, err := authFromCtx(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	s := db.NewSession()
-	defer s.Close()
-
-	tl := &models.TaskLink{ID: in.LinkID, TaskID: in.TaskID}
-	can, err := tl.CanUpdate(s, a)
-	if err != nil {
-		_ = s.Rollback()
-		return nil, translateDomainError(err)
-	}
-	if !can {
-		_ = s.Rollback()
-		return nil, huma.Error403Forbidden("forbidden")
-	}
-
-	file := in.RawBody.Data().File
-	if err := tl.SetCustomIcon(s, file, file.Filename, uint64(file.Size), a); err != nil {
-		_ = s.Rollback()
-		return nil, translateDomainError(err)
-	}
-
-	if err := s.Commit(); err != nil {
-		_ = s.Rollback()
-		return nil, translateDomainError(err)
-	}
-
-	return &singleBody[models.TaskLink]{Body: tl}, nil
-}
-
-// taskLinksIconDownload exists because no handler.Do* fits a file body; bytes
-// stream from the StreamResponse callback without buffering.
-func taskLinksIconDownload(ctx context.Context, in *struct {
-	TaskID int64 `path:"task" doc:"The id of the task the link belongs to."`
-	LinkID int64 `path:"link" doc:"The id of the link whose custom icon to download."`
-}) (*huma.StreamResponse, error) {
-	a, err := authFromCtx(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	f, err := models.GetTaskLinkIconFile(a, in.TaskID, in.LinkID)
-	if err != nil {
-		return nil, translateDomainError(err)
-	}
-
-	return &huma.StreamResponse{Body: func(hctx huma.Context) {
-		c := humaecho.Unwrap(hctx)
-		webfiles.WriteFileDownload((*c).Response(), (*c).Request(), f)
-	}}, nil
-}
-
-// taskLinksIconFromLibrary is a custom (non-CRUDable) action, so permission
-// enforcement and session management are the handler's responsibility here.
-func taskLinksIconFromLibrary(ctx context.Context, in *struct {
-	TaskID       int64 `path:"task" doc:"The id of the task the link belongs to."`
-	LinkID       int64 `path:"link" doc:"The id of the link to set the icon on."`
-	CustomIconID int64 `path:"customicon" doc:"The id of the custom icon library entry to attach."`
-}) (*singleBody[models.TaskLink], error) {
-	a, err := authFromCtx(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	s := db.NewSession()
-	defer s.Close()
-
-	tl := &models.TaskLink{ID: in.LinkID, TaskID: in.TaskID}
-	can, err := tl.CanUpdate(s, a)
-	if err != nil {
-		_ = s.Rollback()
-		return nil, translateDomainError(err)
-	}
-	if !can {
-		_ = s.Rollback()
-		return nil, huma.Error403Forbidden("forbidden")
-	}
-
-	if err := tl.SetCustomIconFromLibrary(s, in.CustomIconID, a); err != nil {
-		_ = s.Rollback()
-		return nil, translateDomainError(err)
-	}
-
-	if err := s.Commit(); err != nil {
-		_ = s.Rollback()
-		return nil, translateDomainError(err)
-	}
-
-	return &singleBody[models.TaskLink]{Body: tl}, nil
 }

@@ -7,8 +7,6 @@ export default class TaskLinkModel extends AbstractModel<ITaskLink> implements I
 	taskId = 0
 	url = ''
 	title = ''
-	icon = ''
-	customIconId = 0
 	createdBy = null
 
 	created: Date
