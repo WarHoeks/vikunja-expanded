@@ -49,9 +49,18 @@ export default class ProjectLinkService {
 	async update(link: IProjectLink): Promise<ProjectLinkModel> {
 		const cancel = this.setLoading()
 		try {
+			// Only the fields the backend actually knows about: models.ProjectLink has
+			// no max_permission (or similar), and Huma rejects unrecognized properties
+			// outright — serializing the full frontend model (which always carries
+			// maxPermission from AbstractModel) fails validation on every update.
 			const {data} = await AuthenticatedHTTPFactory().put(
 				apiV2Url(`projects/${Number(link.projectId)}/links/${Number(link.id)}`),
-				objectToSnakeCase(link),
+				objectToSnakeCase({
+					url: link.url,
+					title: link.title,
+					icon: link.icon,
+					customIconId: link.customIconId,
+				}),
 			)
 			return new ProjectLinkModel(data)
 		} finally {

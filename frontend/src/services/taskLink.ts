@@ -48,9 +48,16 @@ export default class TaskLinkService {
 	async update(link: ITaskLink): Promise<TaskLinkModel> {
 		const cancel = this.setLoading()
 		try {
+			// Only the fields the backend actually knows about: models.TaskLink has no
+			// max_permission (or similar), and Huma rejects unrecognized properties
+			// outright — serializing the full frontend model (which always carries
+			// maxPermission from AbstractModel) fails validation on every update.
 			const {data} = await AuthenticatedHTTPFactory().put(
 				apiV2Url(`tasks/${Number(link.taskId)}/links/${Number(link.id)}`),
-				objectToSnakeCase(link),
+				objectToSnakeCase({
+					url: link.url,
+					title: link.title,
+				}),
 			)
 			return new TaskLinkModel(data)
 		} finally {
