@@ -365,6 +365,8 @@
       "titlePlaceholder": "Link title",
       "iconPlaceholder": "Search for an icon…",
       "uploadCustomIcon": "or upload a custom icon",
+      "customIconSelected": "{filename} selected — uploaded when you save this link",
+      "removeSelectedIcon": "Remove selected icon",
       "save": "Save",
       "cancel": "Cancel",
       "delete": "Delete link",

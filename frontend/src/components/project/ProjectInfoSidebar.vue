@@ -51,6 +51,7 @@
 					<IconPicker
 						v-model="form.icon"
 						@custom-icon-selected="onCustomIconSelected"
+						@custom-icon-cleared="pendingCustomIcon = null"
 					/>
 				</FormField>
 				<div class="project-link-form-actions">
