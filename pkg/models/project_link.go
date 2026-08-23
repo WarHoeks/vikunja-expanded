@@ -141,6 +141,16 @@ func (pl *ProjectLink) Update(s *xorm.Session, a web.Auth) (err error) {
 		return err
 	}
 
+	// pl.CreatedByID is never set from the request body (json:"-", and Update's
+	// own Cols() list deliberately excludes it too — the creator doesn't change
+	// on edit) — it's zero here. Load the real value from the stored row into a
+	// separate struct so we don't clobber pl's new URL/Title/Icon with the old ones.
+	existing := &ProjectLink{ID: pl.ID, ProjectID: pl.ProjectID}
+	if err := existing.loadExisting(s); err != nil {
+		return err
+	}
+	pl.CreatedByID = existing.CreatedByID
+
 	_, err = s.
 		Where("id = ? AND project_id = ?", pl.ID, pl.ProjectID).
 		Cols("url", "title", "icon", "custom_icon_id").

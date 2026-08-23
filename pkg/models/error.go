@@ -2775,6 +2775,34 @@ func (err ErrProjectLinkDoesNotExist) HTTPError() web.HTTPError {
 	}
 }
 
+// ErrTaskLinkDoesNotExist represents an error where a task link does not exist
+type ErrTaskLinkDoesNotExist struct {
+	ID     int64
+	TaskID int64
+}
+
+// IsErrTaskLinkDoesNotExist checks if an error is ErrTaskLinkDoesNotExist.
+func IsErrTaskLinkDoesNotExist(err error) bool {
+	_, ok := err.(ErrTaskLinkDoesNotExist)
+	return ok
+}
+
+func (err ErrTaskLinkDoesNotExist) Error() string {
+	return fmt.Sprintf("Task link does not exist [ID: %d, TaskID: %d]", err.ID, err.TaskID)
+}
+
+// ErrCodeTaskLinkDoesNotExist holds the unique world-error code of this error
+const ErrCodeTaskLinkDoesNotExist = 20009
+
+// HTTPError holds the http error description
+func (err ErrTaskLinkDoesNotExist) HTTPError() web.HTTPError {
+	return web.HTTPError{
+		HTTPCode: http.StatusNotFound,
+		Code:     ErrCodeTaskLinkDoesNotExist,
+		Message:  "This task link does not exist.",
+	}
+}
+
 // ErrProjectLinkHasNoCustomIcon represents an error where a project link's custom icon is requested but none was uploaded
 type ErrProjectLinkHasNoCustomIcon struct {
 	ID int64

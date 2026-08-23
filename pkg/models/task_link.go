@@ -131,6 +131,16 @@ func (tl *TaskLink) Update(s *xorm.Session, a web.Auth) (err error) {
 		return err
 	}
 
+	// tl.CreatedByID is never set from the request body (json:"-", and Update's
+	// own Cols() list deliberately excludes it too — the creator doesn't change
+	// on edit) — it's zero here. Load the real value from the stored row into a
+	// separate struct so we don't clobber tl's new URL/Title with the old ones.
+	existing := &TaskLink{ID: tl.ID, TaskID: tl.TaskID}
+	if err := existing.loadExisting(s); err != nil {
+		return err
+	}
+	tl.CreatedByID = existing.CreatedByID
+
 	_, err = s.
 		Where("id = ? AND task_id = ?", tl.ID, tl.TaskID).
 		Cols("url", "title").
@@ -153,4 +163,17 @@ func (tl *TaskLink) Delete(s *xorm.Session, _ web.Auth) (err error) {
 		Where("id = ? AND task_id = ?", tl.ID, tl.TaskID).
 		Delete(&TaskLink{})
 	return err
+}
+
+// loadExisting fetches the current row for tl.ID/tl.TaskID into tl, without the
+// auto-condition xorm would otherwise add from tl's already-set fields.
+func (tl *TaskLink) loadExisting(s *xorm.Session) error {
+	exists, err := s.Where("id = ? AND task_id = ?", tl.ID, tl.TaskID).NoAutoCondition().Get(tl)
+	if err != nil {
+		return err
+	}
+	if !exists {
+		return ErrTaskLinkDoesNotExist{ID: tl.ID, TaskID: tl.TaskID}
+	}
+	return nil
 }
