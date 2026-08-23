@@ -7,7 +7,7 @@
 		<div class="project-info-sidebar-content">
 			<div
 				v-if="htmlDescription !== ''"
-				class="project-info-description has-text-start"
+				class="project-info-description content has-text-start"
 				v-html="htmlDescription"
 			/>
 
