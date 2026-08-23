@@ -201,13 +201,34 @@ func (pl *ProjectLink) SetCustomIcon(s *xorm.Session, f io.ReadSeeker, realname 
 		return err
 	}
 
-	if oldCustomIconID > 0 {
-		if err := (&files.File{ID: oldCustomIconID}).Delete(s); err != nil && !files.IsErrFileDoesNotExist(err) {
-			return err
-		}
+	if err := deleteCustomIconFileIfUnused(s, oldCustomIconID); err != nil {
+		return err
 	}
 
 	return nil
+}
+
+// SetCustomIconFromLibrary attaches an existing custom icon library entry to this
+// link by copying its file reference — no new upload, and the file may end up
+// shared by several links. The caller owns the session and commit.
+func (pl *ProjectLink) SetCustomIconFromLibrary(s *xorm.Session, customIconID int64, a web.Auth) error {
+	if err := pl.loadExisting(s); err != nil {
+		return err
+	}
+	oldCustomIconID := pl.CustomIconID
+
+	fileID, err := GetCustomIconFileID(s, a, customIconID)
+	if err != nil {
+		return err
+	}
+
+	pl.CustomIconID = fileID
+	pl.Icon = ""
+	if _, err := s.ID(pl.ID).Cols("custom_icon_id", "icon").Update(pl); err != nil {
+		return err
+	}
+
+	return deleteCustomIconFileIfUnused(s, oldCustomIconID)
 }
 
 // GetProjectLinkIconFile loads the file for a link's custom icon, checking read

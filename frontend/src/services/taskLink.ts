@@ -69,6 +69,18 @@ export default class TaskLinkService {
 		}
 	}
 
+	async attachCustomIconFromLibrary(link: ITaskLink, customIconId: number): Promise<TaskLinkModel> {
+		const cancel = this.setLoading()
+		try {
+			const {data} = await AuthenticatedHTTPFactory().post(
+				apiV2Url(`tasks/${Number(link.taskId)}/links/${Number(link.id)}/icon/library/${Number(customIconId)}`),
+			)
+			return new TaskLinkModel(data)
+		} finally {
+			cancel()
+		}
+	}
+
 	async uploadCustomIcon(link: ITaskLink, file: File): Promise<TaskLinkModel> {
 		const cancel = this.setLoading()
 		try {

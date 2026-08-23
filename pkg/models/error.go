@@ -2910,3 +2910,57 @@ func (err ErrTaskLinkIconIsTooLarge) HTTPError() web.HTTPError {
 		Message:  fmt.Sprintf("The task link icon exceeds the configured file size of %d bytes, filesize was %d", config.FilesMaxSize.GetInt64(), err.Size),
 	}
 }
+
+// ErrCustomIconDoesNotExist represents an error where a custom icon library entry does not exist
+type ErrCustomIconDoesNotExist struct {
+	ID int64
+}
+
+// IsErrCustomIconDoesNotExist checks if an error is ErrCustomIconDoesNotExist.
+func IsErrCustomIconDoesNotExist(err error) bool {
+	_, ok := err.(ErrCustomIconDoesNotExist)
+	return ok
+}
+
+func (err ErrCustomIconDoesNotExist) Error() string {
+	return fmt.Sprintf("Custom icon does not exist [ID: %d]", err.ID)
+}
+
+// ErrCodeCustomIconDoesNotExist holds the unique world-error code of this error
+const ErrCodeCustomIconDoesNotExist = 20007
+
+// HTTPError holds the http error description
+func (err ErrCustomIconDoesNotExist) HTTPError() web.HTTPError {
+	return web.HTTPError{
+		HTTPCode: http.StatusNotFound,
+		Code:     ErrCodeCustomIconDoesNotExist,
+		Message:  "This custom icon does not exist.",
+	}
+}
+
+// ErrCustomIconIsTooLarge represents an error where an uploaded custom icon exceeds the configured file size
+type ErrCustomIconIsTooLarge struct {
+	Size uint64
+}
+
+// IsErrCustomIconIsTooLarge checks if an error is ErrCustomIconIsTooLarge.
+func IsErrCustomIconIsTooLarge(err error) bool {
+	_, ok := err.(ErrCustomIconIsTooLarge)
+	return ok
+}
+
+func (err ErrCustomIconIsTooLarge) Error() string {
+	return fmt.Sprintf("Custom icon is too large [Size: %d]", err.Size)
+}
+
+// ErrCodeCustomIconIsTooLarge holds the unique world-error code of this error
+const ErrCodeCustomIconIsTooLarge = 20008
+
+// HTTPError holds the http error description
+func (err ErrCustomIconIsTooLarge) HTTPError() web.HTTPError {
+	return web.HTTPError{
+		HTTPCode: http.StatusBadRequest,
+		Code:     ErrCodeCustomIconIsTooLarge,
+		Message:  fmt.Sprintf("The custom icon exceeds the configured file size of %d bytes, filesize was %d", config.FilesMaxSize.GetInt64(), err.Size),
+	}
+}

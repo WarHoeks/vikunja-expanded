@@ -70,6 +70,18 @@ export default class ProjectLinkService {
 		}
 	}
 
+	async attachCustomIconFromLibrary(link: IProjectLink, customIconId: number): Promise<ProjectLinkModel> {
+		const cancel = this.setLoading()
+		try {
+			const {data} = await AuthenticatedHTTPFactory().post(
+				apiV2Url(`projects/${Number(link.projectId)}/links/${Number(link.id)}/icon/library/${Number(customIconId)}`),
+			)
+			return new ProjectLinkModel(data)
+		} finally {
+			cancel()
+		}
+	}
+
 	async uploadCustomIcon(link: IProjectLink, file: File): Promise<ProjectLinkModel> {
 		const cancel = this.setLoading()
 		try {

@@ -201,13 +201,34 @@ func (tl *TaskLink) SetCustomIcon(s *xorm.Session, f io.ReadSeeker, realname str
 		return err
 	}
 
-	if oldCustomIconID > 0 {
-		if err := (&files.File{ID: oldCustomIconID}).Delete(s); err != nil && !files.IsErrFileDoesNotExist(err) {
-			return err
-		}
+	if err := deleteCustomIconFileIfUnused(s, oldCustomIconID); err != nil {
+		return err
 	}
 
 	return nil
+}
+
+// SetCustomIconFromLibrary attaches an existing custom icon library entry to this
+// link by copying its file reference — no new upload, and the file may end up
+// shared by several links. The caller owns the session and commit.
+func (tl *TaskLink) SetCustomIconFromLibrary(s *xorm.Session, customIconID int64, a web.Auth) error {
+	if err := tl.loadExisting(s); err != nil {
+		return err
+	}
+	oldCustomIconID := tl.CustomIconID
+
+	fileID, err := GetCustomIconFileID(s, a, customIconID)
+	if err != nil {
+		return err
+	}
+
+	tl.CustomIconID = fileID
+	tl.Icon = ""
+	if _, err := s.ID(tl.ID).Cols("custom_icon_id", "icon").Update(tl); err != nil {
+		return err
+	}
+
+	return deleteCustomIconFileIfUnused(s, oldCustomIconID)
 }
 
 // GetTaskLinkIconFile loads the file for a link's custom icon, checking read

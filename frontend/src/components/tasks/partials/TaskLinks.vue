@@ -43,8 +43,10 @@
 			<FormField>
 				<IconPicker
 					v-model="form.icon"
-					@custom-icon-selected="onCustomIconSelected"
-					@custom-icon-cleared="pendingCustomIcon = null"
+					:custom-icon-id="form.customIconId"
+					:custom-icon-name="form.customIconName"
+					@update:custom-icon-id="form.customIconId = $event"
+					@update:custom-icon-name="form.customIconName = $event"
 				/>
 			</FormField>
 			<div class="task-link-form-actions">
@@ -137,11 +139,12 @@ watch(() => props.task?.id, loadLinks, {immediate: true})
 const formOpen = ref(false)
 const editingId = ref<number | null>(null)
 const saving = ref(false)
-const pendingCustomIcon = ref<File | null>(null)
 const form = reactive({
 	title: '',
 	url: '',
 	icon: '',
+	customIconId: 0,
+	customIconName: '',
 })
 
 const canSave = computed(() => form.title.trim() !== '' && form.url.trim() !== '')
@@ -151,7 +154,8 @@ function startCreate() {
 	form.title = ''
 	form.url = ''
 	form.icon = ''
-	pendingCustomIcon.value = null
+	form.customIconId = 0
+	form.customIconName = ''
 	formOpen.value = true
 }
 
@@ -160,19 +164,14 @@ function startEdit(link: ITaskLink) {
 	form.title = link.title
 	form.url = link.url
 	form.icon = link.icon
-	pendingCustomIcon.value = null
+	form.customIconId = link.customIconId
+	form.customIconName = ''
 	formOpen.value = true
 }
 
 function closeForm() {
 	formOpen.value = false
 	editingId.value = null
-	pendingCustomIcon.value = null
-}
-
-function onCustomIconSelected(file: File) {
-	pendingCustomIcon.value = file
-	form.icon = ''
 }
 
 async function save() {
@@ -190,6 +189,11 @@ async function save() {
 				title: form.title,
 				url: form.url,
 				icon: form.icon,
+				// Explicit, not inherited from `existing`: switching away from a
+				// custom icon must clear it here, or the stale id would collide
+				// with the new `icon` slug and fail the model's mutual-exclusivity
+				// validation. attachCustomIconFromLibrary sets it back below if needed.
+				customIconId: 0,
 			}))
 		} else {
 			saved = await taskLinkService.create(props.task.id, {
@@ -199,8 +203,8 @@ async function save() {
 			})
 		}
 
-		if (pendingCustomIcon.value) {
-			saved = await taskLinkService.uploadCustomIcon(saved, pendingCustomIcon.value)
+		if (form.customIconId) {
+			saved = await taskLinkService.attachCustomIconFromLibrary(saved, form.customIconId)
 		}
 
 		if (editingId.value !== null) {

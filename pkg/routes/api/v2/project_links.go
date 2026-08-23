@@ -108,6 +108,15 @@ func RegisterProjectLinkRoutes(api huma.API) {
 			},
 		},
 	}, projectLinksIconDownload)
+
+	Register(api, huma.Operation{
+		OperationID: "project-links-icon-from-library",
+		Summary:     "Attach a custom icon library entry to a project link",
+		Description: "Sets the link's icon to an existing entry from the shared custom icon library (see /custom-icons), without uploading a new image. Requires write access to the project.",
+		Method:      http.MethodPost,
+		Path:        "/projects/{project}/links/{link}/icon/library/{customicon}",
+		Tags:        tags,
+	}, projectLinksIconFromLibrary)
 }
 
 func init() { AddRouteRegistrar(RegisterProjectLinkRoutes) }
@@ -242,4 +251,43 @@ func projectLinksIconDownload(ctx context.Context, in *struct {
 		c := humaecho.Unwrap(hctx)
 		webfiles.WriteFileDownload((*c).Response(), (*c).Request(), f)
 	}}, nil
+}
+
+// projectLinksIconFromLibrary is a custom (non-CRUDable) action, so permission
+// enforcement and session management are the handler's responsibility here.
+func projectLinksIconFromLibrary(ctx context.Context, in *struct {
+	ProjectID    int64 `path:"project" doc:"The id of the project the link belongs to."`
+	LinkID       int64 `path:"link" doc:"The id of the link to set the icon on."`
+	CustomIconID int64 `path:"customicon" doc:"The id of the custom icon library entry to attach."`
+}) (*singleBody[models.ProjectLink], error) {
+	a, err := authFromCtx(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	s := db.NewSession()
+	defer s.Close()
+
+	pl := &models.ProjectLink{ID: in.LinkID, ProjectID: in.ProjectID}
+	can, err := pl.CanUpdate(s, a)
+	if err != nil {
+		_ = s.Rollback()
+		return nil, translateDomainError(err)
+	}
+	if !can {
+		_ = s.Rollback()
+		return nil, huma.Error403Forbidden("forbidden")
+	}
+
+	if err := pl.SetCustomIconFromLibrary(s, in.CustomIconID, a); err != nil {
+		_ = s.Rollback()
+		return nil, translateDomainError(err)
+	}
+
+	if err := s.Commit(); err != nil {
+		_ = s.Rollback()
+		return nil, translateDomainError(err)
+	}
+
+	return &singleBody[models.ProjectLink]{Body: pl}, nil
 }

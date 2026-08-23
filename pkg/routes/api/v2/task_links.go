@@ -107,6 +107,15 @@ func RegisterTaskLinkRoutes(api huma.API) {
 			},
 		},
 	}, taskLinksIconDownload)
+
+	Register(api, huma.Operation{
+		OperationID: "task-links-icon-from-library",
+		Summary:     "Attach a custom icon library entry to a task link",
+		Description: "Sets the link's icon to an existing entry from the shared custom icon library (see /custom-icons), without uploading a new image. Requires write access to the task.",
+		Method:      http.MethodPost,
+		Path:        "/tasks/{task}/links/{link}/icon/library/{customicon}",
+		Tags:        tags,
+	}, taskLinksIconFromLibrary)
 }
 
 func init() { AddRouteRegistrar(RegisterTaskLinkRoutes) }
@@ -241,4 +250,43 @@ func taskLinksIconDownload(ctx context.Context, in *struct {
 		c := humaecho.Unwrap(hctx)
 		webfiles.WriteFileDownload((*c).Response(), (*c).Request(), f)
 	}}, nil
+}
+
+// taskLinksIconFromLibrary is a custom (non-CRUDable) action, so permission
+// enforcement and session management are the handler's responsibility here.
+func taskLinksIconFromLibrary(ctx context.Context, in *struct {
+	TaskID       int64 `path:"task" doc:"The id of the task the link belongs to."`
+	LinkID       int64 `path:"link" doc:"The id of the link to set the icon on."`
+	CustomIconID int64 `path:"customicon" doc:"The id of the custom icon library entry to attach."`
+}) (*singleBody[models.TaskLink], error) {
+	a, err := authFromCtx(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	s := db.NewSession()
+	defer s.Close()
+
+	tl := &models.TaskLink{ID: in.LinkID, TaskID: in.TaskID}
+	can, err := tl.CanUpdate(s, a)
+	if err != nil {
+		_ = s.Rollback()
+		return nil, translateDomainError(err)
+	}
+	if !can {
+		_ = s.Rollback()
+		return nil, huma.Error403Forbidden("forbidden")
+	}
+
+	if err := tl.SetCustomIconFromLibrary(s, in.CustomIconID, a); err != nil {
+		_ = s.Rollback()
+		return nil, translateDomainError(err)
+	}
+
+	if err := s.Commit(); err != nil {
+		_ = s.Rollback()
+		return nil, translateDomainError(err)
+	}
+
+	return &singleBody[models.TaskLink]{Body: tl}, nil
 }
