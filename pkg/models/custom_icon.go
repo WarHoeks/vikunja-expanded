@@ -59,7 +59,10 @@ func (*CustomIcon) TableName() string {
 func (ci *CustomIcon) ReadAll(s *xorm.Session, _ web.Auth, search string, page int, perPage int) (result interface{}, resultCount int, numberOfTotalItems int64, err error) {
 	query := s.Where("1 = 1")
 	if search != "" {
-		query = query.And("name LIKE ?", "%"+search+"%")
+		// LOWER() on both sides instead of LIKE alone: Postgres's LIKE is
+		// case-sensitive (MySQL/SQLite's isn't with their default collations),
+		// so "altus" wouldn't match a name stored as "Altus Production" there.
+		query = query.And("LOWER(name) LIKE LOWER(?)", "%"+search+"%")
 	}
 
 	icons := []*CustomIcon{}
@@ -72,7 +75,7 @@ func (ci *CustomIcon) ReadAll(s *xorm.Session, _ web.Auth, search string, page i
 
 	countQuery := s.Where("1 = 1")
 	if search != "" {
-		countQuery = countQuery.And("name LIKE ?", "%"+search+"%")
+		countQuery = countQuery.And("LOWER(name) LIKE LOWER(?)", "%"+search+"%")
 	}
 	total, err := countQuery.Count(&CustomIcon{})
 	if err != nil {

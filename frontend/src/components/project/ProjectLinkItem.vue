@@ -51,6 +51,7 @@ import Icon from '@/components/misc/Icon'
 import {useSimpleIconSvg} from '@/helpers/simpleIcons'
 import ProjectLinkService from '@/services/projectLink'
 import type {IProjectLink} from '@/modelTypes/IProjectLink'
+import {error} from '@/message'
 
 const props = defineProps<{
 	link: IProjectLink
@@ -70,7 +71,14 @@ watch(
 	() => [props.link.customIconId, props.link.id] as const,
 	async ([customIconId]) => {
 		if (customIconId > 0) {
-			customIconUrl.value = await projectLinkService.getCustomIconBlobUrl(props.link)
+			// Without this catch, a failed fetch (e.g. a stale/broken file
+			// reference) left the icon silently blank with no visible error —
+			// that's exactly what made this bug so hard to diagnose from a report.
+			try {
+				customIconUrl.value = await projectLinkService.getCustomIconBlobUrl(props.link)
+			} catch (e) {
+				error(e)
+			}
 		}
 	},
 	{immediate: true},
