@@ -817,6 +817,10 @@ func getSavedFilterProjects(s *xorm.Session, doer *user.User, search string) (sa
 // GetAllParentProjects returns all parents of a given project
 func GetAllParentProjects(s *xorm.Session, projectID int64) (allProjects map[int64]*Project, err error) {
 	allProjects = make(map[int64]*Project)
+	// No DISTINCT: projects form a tree (one parent each, cycles rejected on
+	// write), so a walk up from a single starting id can't revisit a row — and
+	// Postgres can't DISTINCT a json column (no equality operator for type json),
+	// which vikunja-expanded's default_task_fields column is.
 	err = s.SQL(`WITH RECURSIVE all_projects AS (
 		    SELECT
 		        p.*
@@ -831,7 +835,7 @@ func GetAllParentProjects(s *xorm.Session, projectID int64) (allProjects map[int
 		        projects p
 		            INNER JOIN all_projects pc ON p.ID = pc.parent_project_id
 		)
-		SELECT DISTINCT * FROM all_projects`, projectID).Find(&allProjects)
+		SELECT * FROM all_projects`, projectID).Find(&allProjects)
 	return
 }
 

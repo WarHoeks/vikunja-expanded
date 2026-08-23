@@ -54,15 +54,17 @@
 		</div>
 
 		<FormField :label="$t('project.edit.defaultTaskFields')">
-			<FancyCheckbox
-				v-for="field in defaultTaskFieldOptions"
-				:key="field.key"
-				:model-value="project.defaultTaskFields.includes(field.key)"
-				is-block
-				@update:model-value="toggleDefaultTaskField(field.key)"
-			>
-				{{ field.label }}
-			</FancyCheckbox>
+			<div class="default-task-fields-grid">
+				<FancyCheckbox
+					v-for="field in defaultTaskFieldOptions"
+					:key="field.key"
+					:model-value="project.defaultTaskFields.includes(field.key)"
+					is-block
+					@update:model-value="toggleDefaultTaskField(field.key)"
+				>
+					{{ field.label }}
+				</FancyCheckbox>
+			</div>
 		</FormField>
 	</CreateEdit>
 </template>
@@ -165,3 +167,19 @@ async function save() {
 	}
 }
 </script>
+
+<style lang="scss" scoped>
+.default-task-fields-grid {
+	display: grid;
+	grid-template-columns: repeat(2, 1fr);
+	column-gap: 1rem;
+
+	@media screen and (max-width: $mobile) {
+		grid-template-columns: 1fr;
+	}
+
+	:deep(.fancy-checkbox__content) {
+		font-size: 0.95rem;
+	}
+}
+</style>
