@@ -78,7 +78,15 @@
 			</Message>
 		</CustomTransition>
 
-		<slot v-if="!isLoadingProject" />
+		<div
+			v-if="!isLoadingProject"
+			class="project-content-flex"
+		>
+			<ProjectInfoSidebar :project="currentProject" />
+			<div class="project-content-main">
+				<slot />
+			</div>
+		</div>
 	</div>
 </template>
 
@@ -93,6 +101,7 @@ import DropdownItem from '@/components/misc/DropdownItem.vue'
 import Icon from '@/components/misc/Icon'
 import Message from '@/components/misc/Message.vue'
 import CustomTransition from '@/components/misc/CustomTransition.vue'
+import ProjectInfoSidebar from '@/components/project/ProjectInfoSidebar.vue'
 
 import {getProjectTitle} from '@/helpers/getProjectTitle'
 import {useTitle} from '@/composables/useTitle'
@@ -263,6 +272,21 @@ function getViewRoute(view: IProjectView) {
 // FIXME: this should be in notification and set via a prop
 .is-archived .notification.is-warning {
 	margin-block-end: 1rem;
+}
+
+.project-content-flex {
+	display: flex;
+	align-items: flex-start;
+	gap: 1rem;
+
+	@media screen and (max-width: $tablet) {
+		display: block;
+	}
+}
+
+.project-content-main {
+	min-inline-size: 0;
+	flex: 1;
 }
 
 .project-title-print {

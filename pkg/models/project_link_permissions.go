@@ -1,0 +1,46 @@
+// Vikunja is a to-do list application to facilitate your life.
+// Copyright 2018-present Vikunja and contributors. All rights reserved.
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Affero General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU Affero General Public License for more details.
+//
+// You should have received a copy of the GNU Affero General Public License
+// along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+package models
+
+import (
+	"code.vikunja.io/api/pkg/web"
+	"xorm.io/xorm"
+)
+
+// CanRead checks if a user has read access to a project link (delegates to the parent project)
+func (pl *ProjectLink) CanRead(s *xorm.Session, a web.Auth) (bool, int, error) {
+	p := &Project{ID: pl.ProjectID}
+	return p.CanRead(s, a)
+}
+
+// CanCreate checks if a user can add a link to a project
+func (pl *ProjectLink) CanCreate(s *xorm.Session, a web.Auth) (bool, error) {
+	p := &Project{ID: pl.ProjectID}
+	return p.CanWrite(s, a)
+}
+
+// CanUpdate checks if a user can update a project link
+func (pl *ProjectLink) CanUpdate(s *xorm.Session, a web.Auth) (bool, error) {
+	p := &Project{ID: pl.ProjectID}
+	return p.CanWrite(s, a)
+}
+
+// CanDelete checks if a user can delete a project link
+func (pl *ProjectLink) CanDelete(s *xorm.Session, a web.Auth) (bool, error) {
+	p := &Project{ID: pl.ProjectID}
+	return p.CanWrite(s, a)
+}

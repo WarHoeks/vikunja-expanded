@@ -2746,3 +2746,85 @@ func (err ErrUserDataExportDoesNotExist) HTTPError() web.HTTPError {
 		Message:  "No user data export found.",
 	}
 }
+
+// ErrProjectLinkDoesNotExist represents an error where a project link does not exist
+type ErrProjectLinkDoesNotExist struct {
+	ID        int64
+	ProjectID int64
+}
+
+// IsErrProjectLinkDoesNotExist checks if an error is ErrProjectLinkDoesNotExist.
+func IsErrProjectLinkDoesNotExist(err error) bool {
+	_, ok := err.(ErrProjectLinkDoesNotExist)
+	return ok
+}
+
+func (err ErrProjectLinkDoesNotExist) Error() string {
+	return fmt.Sprintf("Project link does not exist [ID: %d, ProjectID: %d]", err.ID, err.ProjectID)
+}
+
+// ErrCodeProjectLinkDoesNotExist holds the unique world-error code of this error
+const ErrCodeProjectLinkDoesNotExist = 20001
+
+// HTTPError holds the http error description
+func (err ErrProjectLinkDoesNotExist) HTTPError() web.HTTPError {
+	return web.HTTPError{
+		HTTPCode: http.StatusNotFound,
+		Code:     ErrCodeProjectLinkDoesNotExist,
+		Message:  "This project link does not exist.",
+	}
+}
+
+// ErrProjectLinkHasNoCustomIcon represents an error where a project link's custom icon is requested but none was uploaded
+type ErrProjectLinkHasNoCustomIcon struct {
+	ID int64
+}
+
+// IsErrProjectLinkHasNoCustomIcon checks if an error is ErrProjectLinkHasNoCustomIcon.
+func IsErrProjectLinkHasNoCustomIcon(err error) bool {
+	_, ok := err.(ErrProjectLinkHasNoCustomIcon)
+	return ok
+}
+
+func (err ErrProjectLinkHasNoCustomIcon) Error() string {
+	return fmt.Sprintf("Project link has no custom icon [ID: %d]", err.ID)
+}
+
+// ErrCodeProjectLinkHasNoCustomIcon holds the unique world-error code of this error
+const ErrCodeProjectLinkHasNoCustomIcon = 20002
+
+// HTTPError holds the http error description
+func (err ErrProjectLinkHasNoCustomIcon) HTTPError() web.HTTPError {
+	return web.HTTPError{
+		HTTPCode: http.StatusNotFound,
+		Code:     ErrCodeProjectLinkHasNoCustomIcon,
+		Message:  "This project link has no custom icon.",
+	}
+}
+
+// ErrProjectLinkIconIsTooLarge represents an error where an uploaded project link icon exceeds the configured file size
+type ErrProjectLinkIconIsTooLarge struct {
+	Size uint64
+}
+
+// IsErrProjectLinkIconIsTooLarge checks if an error is ErrProjectLinkIconIsTooLarge.
+func IsErrProjectLinkIconIsTooLarge(err error) bool {
+	_, ok := err.(ErrProjectLinkIconIsTooLarge)
+	return ok
+}
+
+func (err ErrProjectLinkIconIsTooLarge) Error() string {
+	return fmt.Sprintf("Project link icon is too large [Size: %d]", err.Size)
+}
+
+// ErrCodeProjectLinkIconIsTooLarge holds the unique world-error code of this error
+const ErrCodeProjectLinkIconIsTooLarge = 20003
+
+// HTTPError holds the http error description
+func (err ErrProjectLinkIconIsTooLarge) HTTPError() web.HTTPError {
+	return web.HTTPError{
+		HTTPCode: http.StatusBadRequest,
+		Code:     ErrCodeProjectLinkIconIsTooLarge,
+		Message:  fmt.Sprintf("The project link icon exceeds the configured file size of %d bytes, filesize was %d", config.FilesMaxSize.GetInt64(), err.Size),
+	}
+}
