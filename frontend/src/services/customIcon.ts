@@ -36,9 +36,18 @@ export default class CustomIconService {
 			const data = new FormData()
 			data.append('name', name)
 			data.append('file', file, file.name)
+			// AuthenticatedHTTPFactory's request interceptor unconditionally forces
+			// Content-Type: application/json, which breaks a FormData body unless we
+			// override it back here — mirrors AbstractService.uploadFormData.
 			const {data: response} = await AuthenticatedHTTPFactory().post(
 				apiV2Url('custom-icons'),
 				data,
+				{
+					headers: {
+						'Content-Type': 'multipart/form-data; boundary=' + data._boundary,
+					},
+					transformRequest: formData => formData,
+				},
 			)
 			return new CustomIconModel(response)
 		} finally {
