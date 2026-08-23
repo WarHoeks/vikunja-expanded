@@ -312,6 +312,36 @@ async function doDelete() {
 .project-info-description {
 	margin-block-end: 1rem;
 	font-size: .9rem;
+
+	// TipTap's own task-list flex/no-bullet CSS (in editor/TipTap.vue) only loads on
+	// pages that mount a live editor, so it's absent here — reapply it for the
+	// static v-html render. :deep() is required since v-html content isn't
+	// template-compiled, so Vue can't scope-tag it directly.
+	:deep(ul[data-type='taskList']) {
+		list-style: none;
+		padding: 0;
+		margin-inline-start: 0;
+
+		li[data-checked='true'] {
+			color: var(--grey-500);
+			text-decoration: line-through;
+		}
+
+		li {
+			display: flex;
+			margin-block-start: .25rem;
+
+			> label {
+				flex: 0 0 auto;
+				margin-inline-end: .5rem;
+				user-select: none;
+			}
+
+			> div {
+				flex: 1 1 auto;
+			}
+		}
+	}
 }
 
 .project-links-title {
