@@ -1,66 +1,46 @@
-<img src="https://vikunja.io/images/vikunja-logo.svg" alt="" style="display: block;width: 50%;margin: 0 auto;" width="50%"/>
+<img src="https://vikunja.io/images/vikunja-logo.svg" alt="" style="display: block;width: 40%;margin: 0 auto;" width="40%"/>
 
-[![Build Status](https://github.com/go-vikunja/vikunja/actions/workflows/ci.yml/badge.svg)](https://github.com/go-vikunja/vikunja/actions/workflows/ci.yml)
-[![License: AGPL-3.0-or-later](https://img.shields.io/badge/License-AGPL--3.0--or--later-blue.svg)](LICENSE)
-[![Install](https://img.shields.io/badge/download-v2.5.0-brightgreen.svg)](https://vikunja.io/docs/installing)
-[![Docker Pulls](https://img.shields.io/docker/pulls/vikunja/vikunja.svg)](https://hub.docker.com/r/vikunja/vikunja/)
-[![OpenAPI Docs](https://img.shields.io/badge/swagger-docs-brightgreen.svg)](https://try.vikunja.io/api/v2/docs)
+# vikunja-expanded
 
-# Vikunja
+A personal fork of [Vikunja](https://vikunja.io) ([go-vikunja/vikunja](https://github.com/go-vikunja/vikunja)), the open-source task manager. This fork adds a few features on top of stock Vikunja for a homelab deployment; everything else is unmodified upstream Vikunja.
 
-> The task manager you actually own. 
+All credit for the underlying application goes to the Vikunja maintainers and contributors. This repository exists to track a small, deliberately-scoped set of additions on top of their work, not to replace or compete with it. If you don't need the extras below, use [upstream Vikunja](https://github.com/go-vikunja/vikunja) instead — it's actively maintained and this fork will always lag behind it.
 
-If Vikunja is useful to you, please consider [supporting the project](https://vikunja.io/support/). You can [buy a coffee](https://www.buymeacoffee.com/kolaente), [sponsor on GitHub](https://github.com/sponsors/kolaente) or buy [a sticker pack](https://vikunja.io/stickers).
-We're also offering [a hosted version of Vikunja](https://vikunja.cloud/) if you want a hassle-free solution for yourself or your team.
-If you or your company needs admin panel, audit logs or time tracking, check out [Vikunja Pro](https://vikunja.io/pro/).
+## What this fork adds
 
-> [!NOTE]
-> For the development of Vikunja, we're using LLM-Assisted coding tools in various parts of the codebase.
-> Most contributions made @tink-bot are built that way.
+- **Project web links** — attach reference links (git repo, prod environment, docs, etc.) to a project, each with a URL, description, and an icon (picked from [simple-icons](https://simple-icons.org/) or uploaded custom), shown in a new resizable sidebar next to the project description. Exposed via the API.
+- **Task web links** — the same link concept, but scoped to a task, alongside the existing file-attachments feature.
+- **Default task fields per project** — choose which fields (priority, due date, labels, ...) always show on a task in a given project, instead of adding them manually every time.
+- **Labels field shows all labels on focus** — no need to type before seeing what labels exist.
 
-## Table of contents
+Everything else — auth, CalDAV, migrations, mobile apps, etc. — is stock Vikunja. See [upstream's feature list](https://vikunja.io/features/) for the rest.
 
-- [Security Reports](#security-reports)
-- [Features](#features)
-- [Docs](#docs)
-	- [Roadmap](#roadmap)
-- [Contributing](#contributing)
-- [License](#license)
-	- [Unsplash Images](#unsplash-images)
+## Running it
 
-## Security Reports
+This image is a drop-in replacement for `vikunja/vikunja`. Point your existing compose file's `vikunja` service at this image instead — nothing else about your stack (database, reverse proxy, env vars) needs to change:
 
-If you find any security-related issues you don't want to disclose publicly, please use [the contact information on our website](https://vikunja.io/contact/#security).
+```yaml
+services:
+  vikunja:
+    image: warhoeks/vikunja-expanded:latest
+    # ...rest of your existing vikunja service config, unchanged
+```
 
-## Features
+All of stock Vikunja's [configuration options](https://vikunja.io/docs/config-options/) and [installation docs](https://vikunja.io/docs/installing/) apply unchanged.
 
-See [the features page](https://vikunja.io/features/) on our website for a more exhaustive list or 
-try it on [try.vikunja.io](https://try.vikunja.io)!
+## Staying in sync with upstream
 
-## Docs
+This repo keeps two long-lived branches:
 
-* [Installing](https://vikunja.io/docs/installing/)
-* [Build from source](https://vikunja.io/docs/build-from-sources/)
-* [Development setup](https://vikunja.io/docs/development/)
-* [Magefile](https://vikunja.io/docs/magefile/)
-* [Testing](https://vikunja.io/docs/testing/)
+- `upstream-main` — a clean mirror of `go-vikunja/vikunja`'s `main`, never modified directly.
+- `main` — `upstream-main` plus this fork's commits. This is what gets built and deployed.
 
-All docs can be found on [the Vikunja home page](https://vikunja.io/docs/).
+See [MAINTENANCE.md](MAINTENANCE.md) for the sync procedure and the list of files this fork touches (the ones most likely to need conflict resolution on an upstream sync).
 
-### Roadmap
+## Building
 
-See [the roadmap](https://my.vikunja.cloud/share/QFyzYEmEYfSyQfTOmIRSwLUpkFjboaBqQCnaPmWd/auth) (hosted on Vikunja!) for more!
-
-## Contributing
-
-Please check out the contribution guidelines on [the website](https://vikunja.io/docs/development/).
+Same as upstream — see [Vikunja's build-from-source docs](https://vikunja.io/docs/build-from-sources/). The `Dockerfile` at the repo root is unmodified from upstream; CI builds it via [`.github/workflows/docker-publish.yml`](.github/workflows/docker-publish.yml) and pushes to [Docker Hub](https://hub.docker.com/r/warhoeks/vikunja-expanded).
 
 ## License
 
-Most of this repository is licensed under [AGPL‑3.0‑or‑later](LICENSE).
-The contents of [`desktop/`](desktop/) are licensed under
-[GPL‑3.0‑or‑later](desktop/LICENSE).
-
-### Unsplash Images
-
-Background images from Unsplash are distributed under the [Unsplash License](https://unsplash.com/license). The license requires giving credit to the photographer and Unsplash. See [Unsplash’s terms](https://unsplash.com/terms) for more information.
+Same as upstream: most of this repository is [AGPL-3.0-or-later](LICENSE); [`desktop/`](desktop/) is GPL-3.0-or-later. This fork's source is public here, satisfying AGPL §13 for anyone it's served to over the network.
