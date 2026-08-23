@@ -45,12 +45,11 @@ export const useLabelStore = defineStore('label', () => {
 	// **
 	const filterLabelsByQuery = computed(() => {
 		return (labelsToHide: ILabel[], query: string) => {
-			if (query === '') return []
 			const labelIdsToHide: number[] = labelsToHide.map(({id}) => id)
 			const q = query.toLowerCase()
 			return labelsArray.value
 				.filter(l => !labelIdsToHide.includes(l.id))
-				.filter(l => l.title.toLowerCase().includes(q) || (l.description ?? '').toLowerCase().includes(q))
+				.filter(l => q === '' || l.title.toLowerCase().includes(q) || (l.description ?? '').toLowerCase().includes(q))
 		}
 	})
 

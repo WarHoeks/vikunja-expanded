@@ -5,6 +5,7 @@
 		:placeholder="$t('task.label.placeholder')"
 		:multiple="true"
 		:search-results="foundLabels"
+		:show-empty="true"
 		label="title"
 		:creatable="creatable"
 		:creation-disabled-message="creationDisabledMessage"

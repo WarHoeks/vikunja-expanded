@@ -371,6 +371,19 @@
 						/>
 					</div>
 
+					<!-- Links -->
+					<div
+						v-show="activeFields.taskLinks || hasTaskLinks"
+						class="content task-links-wrapper"
+					>
+						<TaskLinks
+							:ref="e => { setFieldRef('taskLinks', e); taskLinksRef = e as any }"
+							:task="task"
+							:edit-enabled="canWrite"
+							@has-links="hasTaskLinks = $event"
+						/>
+					</div>
+
 					<!-- Time Tracking -->
 					<div
 						v-if="timeTrackingEnabled && activeFields.timeTracking"
@@ -526,6 +539,13 @@
 							{{ $t('task.detail.actions.attachments') }}
 						</XButton>
 						<XButton
+							variant="secondary"
+							icon="link"
+							@click="openTaskLinks()"
+						>
+							{{ $t('task.links.addLink') }}
+						</XButton>
+						<XButton
 							v-shortcut="'KeyR'"
 							variant="secondary"
 							icon="sitemap"
@@ -673,6 +693,7 @@ import BaseButton from '@/components/base/BaseButton.vue'
 
 // partials
 import Attachments from '@/components/tasks/partials/Attachments.vue'
+import TaskLinks from '@/components/tasks/partials/TaskLinks.vue'
 import TaskTimeTracking from '@/components/time-tracking/TaskTimeTracking.vue'
 import ChecklistSummary from '@/components/tasks/partials/ChecklistSummary.vue'
 import ColorPicker from '@/components/input/ColorPicker.vue'
@@ -864,6 +885,8 @@ async function scrollToHeading() {
 }
 
 const attachmentsRef = ref<InstanceType<typeof Attachments> | null>(null)
+const taskLinksRef = ref<InstanceType<typeof TaskLinks> | null>(null)
+const hasTaskLinks = ref(false)
 
 const taskViewContainer = ref<HTMLElement | null>(null)
 const scrollContainer = ref<HTMLElement | null>(null)
@@ -1003,6 +1026,7 @@ type FieldType =
 	| 'reminders'
 	| 'repeatAfter'
 	| 'startDate'
+	| 'taskLinks'
 	| 'timeTracking'
 
 const activeFields: { [type in FieldType]: boolean } = reactive({
@@ -1019,6 +1043,7 @@ const activeFields: { [type in FieldType]: boolean } = reactive({
 	reminders: false,
 	repeatAfter: false,
 	startDate: false,
+	taskLinks: false,
 	timeTracking: false,
 })
 
@@ -1027,19 +1052,24 @@ function setActiveFields() {
 	// task.startDate = task.startDate || null
 	// task.endDate = task.endDate || null
 
+	// A project can force fields to always show, even empty, instead of only once they have a value.
+	const isDefaultField = (key: FieldType) => project.value?.defaultTaskFields?.includes(key) ?? false
+
 	// Set all active fields based on values in the model
-	activeFields.assignees = task.value.assignees.length > 0
-	activeFields.attachments = task.value.attachments.length > 0
-	activeFields.timeTracking = (task.value.timeEntriesCount ?? 0) > 0
-	activeFields.dueDate = task.value.dueDate !== null
-	activeFields.endDate = task.value.endDate !== null
-	activeFields.labels = task.value.labels.length > 0
-	activeFields.percentDone = task.value.percentDone > 0
-	activeFields.priority = task.value.priority !== PRIORITIES.UNSET
-	activeFields.relatedTasks = Object.keys(task.value.relatedTasks).length > 0
-	activeFields.reminders = task.value.reminders.length > 0
-	activeFields.repeatAfter = task.value.repeatAfter?.amount > 0 || task.value.repeatMode !== TASK_REPEAT_MODES.REPEAT_MODE_DEFAULT
-	activeFields.startDate = task.value.startDate !== null
+	activeFields.assignees = task.value.assignees.length > 0 || isDefaultField('assignees')
+	activeFields.attachments = task.value.attachments.length > 0 || isDefaultField('attachments')
+	activeFields.timeTracking = (task.value.timeEntriesCount ?? 0) > 0 || isDefaultField('timeTracking')
+	activeFields.dueDate = task.value.dueDate !== null || isDefaultField('dueDate')
+	activeFields.endDate = task.value.endDate !== null || isDefaultField('endDate')
+	activeFields.labels = task.value.labels.length > 0 || isDefaultField('labels')
+	activeFields.percentDone = task.value.percentDone > 0 || isDefaultField('percentDone')
+	activeFields.priority = task.value.priority !== PRIORITIES.UNSET || isDefaultField('priority')
+	activeFields.relatedTasks = Object.keys(task.value.relatedTasks).length > 0 || isDefaultField('relatedTasks')
+	activeFields.reminders = task.value.reminders.length > 0 || isDefaultField('reminders')
+	activeFields.repeatAfter = task.value.repeatAfter?.amount > 0 || task.value.repeatMode !== TASK_REPEAT_MODES.REPEAT_MODE_DEFAULT || isDefaultField('repeatAfter')
+	activeFields.startDate = task.value.startDate !== null || isDefaultField('startDate')
+	activeFields.taskLinks = hasTaskLinks.value || isDefaultField('taskLinks')
+	activeFields.color = isDefaultField('color')
 }
 
 const activeFieldElements: { [id in FieldType]: HTMLElement | null } = reactive({
@@ -1056,6 +1086,7 @@ const activeFieldElements: { [id in FieldType]: HTMLElement | null } = reactive(
 	reminders: null,
 	repeatAfter: null,
 	startDate: null,
+	taskLinks: null,
 })
 
 function setFieldRef(name, e) {
@@ -1086,6 +1117,17 @@ function openAttachments() {
 			scrollIntoView(el)
 		}
 		attachmentsRef.value?.openFilePicker()
+	})
+}
+
+function openTaskLinks() {
+	activeFields.taskLinks = true
+	nextTick(() => {
+		const el = activeFieldElements.taskLinks
+		if (el) {
+			scrollIntoView(el)
+		}
+		taskLinksRef.value?.startCreate()
 	})
 }
 

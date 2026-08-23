@@ -43,11 +43,19 @@ describe('filter labels', () => {
     setActivePinia(createPinia())
   })
 
-	it('should return an empty array for an empty query', () => {
+	it('should return all labels for an empty query', () => {
 		const store = setupStore()
 		const labels = store.filterLabelsByQuery([], '')
 
-		expect(labels).toHaveLength(0)
+		expect(labels).toHaveLength(Object.keys(MOCK_LABELS).length)
+	})
+	it('should not return hidden labels for an empty query', () => {
+		const store = setupStore()
+
+		const labelsToHide = [{id: 1, title: 'label1'}] as ILabel[]
+		const labels = store.filterLabelsByQuery(labelsToHide, '')
+
+		expect(labels).toHaveLength(Object.keys(MOCK_LABELS).length - 1)
 	})
 	it('should return labels for a query', () => {
 		const store = setupStore()

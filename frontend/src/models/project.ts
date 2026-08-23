@@ -26,6 +26,7 @@ export default class ProjectModel extends AbstractModel<IProject> implements IPr
 	backgroundBlurHash = ''
 	parentProjectId = 0
 	views: IProjectView[] = []
+	defaultTaskFields: string[] = []
 	
 	created: Date = null
 	updated: Date = null

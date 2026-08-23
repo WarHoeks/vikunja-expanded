@@ -48,6 +48,8 @@ type Project struct {
 	Identifier string `xorm:"varchar(10) null" json:"identifier" valid:"runelength(0|10)" minLength:"0" maxLength:"10" doc:"The unique project short identifier. Used to build task identifiers (e.g. PROJ-123)."`
 	// The hex color of this project
 	HexColor string `xorm:"varchar(6) null" json:"hex_color" valid:"runelength(0|7)" maxLength:"7" doc:"The hex color of this project, without the leading #."`
+	// Task fields that should always be visible on a task in this project, even when empty, instead of only showing once they have a value. Valid values: assignees, attachments, color, dueDate, endDate, labels, percentDone, priority, relatedTasks, reminders, repeatAfter, startDate, taskLinks, timeTracking.
+	DefaultTaskFields []string `xorm:"JSON null" json:"default_task_fields" doc:"Task fields that should always be visible on a task in this project, even when empty, instead of only showing once they have a value."`
 
 	OwnerID         int64    `xorm:"bigint INDEX not null" json:"-"`
 	ParentProjectID *int64   `xorm:"bigint INDEX null" json:"parent_project_id" doc:"The id of the parent project, or 0 for a top-level project. Always present in responses. Omit it on a write to leave the parent unchanged; sending an explicit 0 detaches the project to the top level and requires admin permission."`
@@ -1303,6 +1305,7 @@ func UpdateProject(s *xorm.Session, project *Project, auth web.Auth, updateProje
 		"identifier",
 		"hex_color",
 		"position",
+		"default_task_fields",
 	}
 	// Only touch parent_project_id when it was actually sent, otherwise a
 	// partial update (nil) would silently detach the project to the top level.

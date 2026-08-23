@@ -52,6 +52,18 @@
 				</FormField>
 			</div>
 		</div>
+
+		<FormField :label="$t('project.edit.defaultTaskFields')">
+			<FancyCheckbox
+				v-for="field in defaultTaskFieldOptions"
+				:key="field.key"
+				:model-value="project.defaultTaskFields.includes(field.key)"
+				is-block
+				@update:model-value="toggleDefaultTaskField(field.key)"
+			>
+				{{ field.label }}
+			</FancyCheckbox>
+		</FormField>
 	</CreateEdit>
 </template>
 
@@ -64,6 +76,7 @@ import Editor from '@/components/input/AsyncEditor'
 import ColorPicker from '@/components/input/ColorPicker.vue'
 import CreateEdit from '@/components/misc/CreateEdit.vue'
 import FormField from '@/components/input/FormField.vue'
+import FancyCheckbox from '@/components/input/FancyCheckbox.vue'
 import ProjectSearch from '@/components/tasks/partials/ProjectSearch.vue'
 
 import type {IProject} from '@/modelTypes/IProject'
@@ -108,6 +121,32 @@ watch(
 )
 
 useTitle(() => project?.title ? t('project.edit.title', {project: project.title}) : '')
+
+const defaultTaskFieldOptions = computed(() => [
+	{key: 'assignees', label: t('task.detail.actions.assign')},
+	{key: 'attachments', label: t('task.detail.actions.attachments')},
+	{key: 'color', label: t('task.detail.actions.color')},
+	{key: 'dueDate', label: t('task.detail.actions.dueDate')},
+	{key: 'endDate', label: t('task.detail.actions.endDate')},
+	{key: 'labels', label: t('task.detail.actions.label')},
+	{key: 'percentDone', label: t('task.detail.actions.percentDone')},
+	{key: 'priority', label: t('task.detail.actions.priority')},
+	{key: 'relatedTasks', label: t('task.detail.actions.relatedTasks')},
+	{key: 'reminders', label: t('task.detail.actions.reminders')},
+	{key: 'repeatAfter', label: t('task.detail.actions.repeatAfter')},
+	{key: 'startDate', label: t('task.detail.actions.startDate')},
+	{key: 'taskLinks', label: t('task.links.title')},
+	{key: 'timeTracking', label: t('task.detail.actions.timeTracking')},
+])
+
+function toggleDefaultTaskField(key: string) {
+	const index = project.defaultTaskFields.indexOf(key)
+	if (index === -1) {
+		project.defaultTaskFields.push(key)
+	} else {
+		project.defaultTaskFields.splice(index, 1)
+	}
+}
 
 async function save() {
 	if (isSaving.value) {

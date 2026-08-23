@@ -430,6 +430,7 @@
       "description": "Description",
       "descriptionPlaceholder": "Enter a description for this project, hit '/' for more options…",
       "color": "Color",
+      "defaultTaskFields": "Always show these fields on tasks in this project",
       "success": "The project was successfully updated."
     },
     "share": {
@@ -1105,6 +1106,10 @@
       "unsubscribeSuccessProject": "You are now unsubscribed to this project",
       "subscribeSuccessTask": "You are now subscribed to this task",
       "unsubscribeSuccessTask": "You are now unsubscribed to this task"
+    },
+    "links": {
+      "title": "Links",
+      "addLink": "Add web link"
     },
     "attachment": {
       "title": "Attachments",
